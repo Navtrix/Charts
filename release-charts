@@ -1,0 +1,55 @@
+#!/bin/bash -x
+# shfmt:
+
+SOURCE=".cr-release-store"
+DEST=".cr-release-packages"
+OWNER=Navtrix
+REPO=Charts
+URL=https://api.github.com
+TOKEN="${CR_TOKEN?}"
+
+join()
+{
+    local IFS=/
+    echo "$*"
+}
+
+api()
+{
+    local api="$(join "$@")"
+
+    curl -L -H "Authorization: Basic $TOKEN" -s "${URL}/repos/${OWNER}/${REPO}${api:+/${api}}"
+}
+
+releases()
+{
+    api releases | jq -r '.[].name'
+}
+
+clean()
+{
+    find "${DEST}" -type f -name '*.tgz' -delete
+}
+
+chartlist()
+{
+    find "${SOURCE}" -type f -name '*.tgz' -printf '%f\n'
+}
+
+clean
+declare -A exists=()
+
+while read id; do
+    exists["${id}.tgz"]=1
+done < <(releases)
+
+rc=1
+
+for v in $(chartlist); do
+    if [ ! -v exists[$v] ]; then
+        cp "${SOURCE}/${v}" "${DEST}/${v}"
+        rc=0
+    fi
+done
+
+exit $rc

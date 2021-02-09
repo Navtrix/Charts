@@ -1,41 +1,198 @@
-{{- if .Values.ingress.enabled -}}
-{{- $fullName := include "mainflux.fullname" . -}}
-{{- $svcPort := .Values.service.port -}}
-{{- if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
-apiVersion: networking.k8s.io/v1beta1
-{{- else -}}
+# Copyright (c) Mainflux
+# SPDX-License-Identifier: Apache-2.0
+
 apiVersion: extensions/v1beta1
-{{- end }}
 kind: Ingress
 metadata:
-  name: {{ $fullName }}
-  labels:
-    {{- include "mainflux.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
+{{- if .Values.ingress.annotations }}
   annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+{{ toYaml .Values.ingress.annotations | indent 4 }}
+{{- end }}
+{{- if .Values.ingress.labels }}
+  labels:
+{{ toYaml .Values.ingress.labels | indent 4 }}
+{{- end }}
+  name: {{ .Release.Name }}-nginx-ingress
 spec:
-  {{- if .Values.ingress.tls }}
-  tls:
-    {{- range .Values.ingress.tls }}
-    - hosts:
-        {{- range .hosts }}
-        - {{ . | quote }}
-        {{- end }}
-      secretName: {{ .secretName }}
-    {{- end }}
-  {{- end }}
   rules:
-    {{- range .Values.ingress.hosts }}
-    - host: {{ .host | quote }}
+    - host: "{{ .Values.ingress.hostname }}"
       http:
         paths:
-          {{- range .paths }}
-          - path: {{ . }}
+          - path: /
             backend:
-              serviceName: {{ $fullName }}
-              servicePort: {{ $svcPort }}
-          {{- end }}
-    {{- end }}
-  {{- end }}
+              serviceName: {{ .Release.Name }}-ui
+              servicePort: {{ .Values.ui.port }}
+          - path: /version
+            backend:
+              serviceName: {{ .Release.Name }}-things
+              servicePort: {{ .Values.things.httpPort }}
+{{- if .Values.ingress.tls }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.tls.hostname }}
+      secretName: {{ .Values.ingress.tls.secret }}
+{{- end }}
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+{{- if .Values.ingress.annotations }}
+{{ toYaml .Values.ingress.annotations | indent 4 }}
+{{- end }}
+{{- if .Values.ingress.labels }}
+  labels:
+{{ toYaml .Values.ingress.labels | indent 4 }}
+{{- end }}
+  name: {{ .Release.Name }}-nginx-rewrite-ingress
+spec:
+  rules:
+    - host: "{{ .Values.ingress.hostname }}"
+      http:
+        paths:
+          - path: /(users?.*)
+            backend:
+              serviceName: {{ .Release.Name }}-users
+              servicePort: {{ .Values.users.httpPort }}
+          - path: /(password?.*)
+            backend:
+              serviceName: {{ .Release.Name }}-users
+              servicePort: {{ .Values.users.httpPort }}
+          - path: /(groups?.*)
+            backend:
+              serviceName: {{ .Release.Name }}-users
+              servicePort: {{ .Values.users.httpPort }}
+          - path: /(tokens)
+            backend:
+              serviceName: {{ .Release.Name }}-users
+              servicePort: {{ .Values.users.httpPort }}
+          - path: /(things?.*)
+            backend:
+              serviceName: {{ .Release.Name }}-things
+              servicePort: {{ .Values.things.httpPort }}
+          - path: /(channels?.*)
+            backend:
+              serviceName: {{ .Release.Name }}-things
+              servicePort: {{ .Values.things.httpPort }}
+          - path: /(connect?.*)
+            backend:
+              serviceName: {{ .Release.Name }}-things
+              servicePort: {{ .Values.things.httpPort }}
+          - path: /bs/?(.*)
+            backend:
+              serviceName: {{ .Release.Name }}-bootstrap
+              servicePort: {{ .Values.bootstrap.httpPort }}
+          - path: /version/users/?(.*)
+            backend:
+              serviceName: {{ .Release.Name }}-users
+              servicePort: {{ .Values.users.httpPort }}
+          - path: /version/things/?(.*)
+            backend:
+              serviceName: {{ .Release.Name }}-things
+              servicePort: {{ .Values.things.httpPort }}
+          - path: /version/http/?(.*)
+            backend:
+              serviceName: {{ .Release.Name }}-adapter-http
+              servicePort: {{ default .Values.adapter_http.httpPort }}
+{{- if .Values.bootstrap.enabled }}
+          - path: /bootstrap/?(.*)
+            backend:
+              serviceName: {{ .Release.Name }}-bootstrap
+              servicePort: {{ .Values.bootstrap.httpPort }}
+{{- end }}
+{{- if .Values.influxdb.enabled }}
+          - path: /reader/?(.*)
+            backend:
+              serviceName: {{ .Release.Name }}-influxdb-reader
+              servicePort: {{ .Values.influxdb.reader.httpPort }}
+{{- end }}
+{{- if .Values.twins.enabled }}
+          - path: /(twins?.*)
+            backend:
+              serviceName: {{ .Release.Name }}-twins
+              servicePort: {{ .Values.twins.httpPort }}
+          - path: /(states?.*)
+            backend:
+              serviceName: {{ .Release.Name }}-twins
+              servicePort: {{ .Values.twins.httpPort }}
+{{- end }}
+{{- if .Values.adapter_opcua.enabled }}
+          - path: /(browse?.*)
+            backend:
+              serviceName: {{ .Release.Name }}-adapter-opcua
+              servicePort: {{ default .Values.adapter_opcua.httpPort }}
+{{- end }}
+{{- if .Values.ingress.tls }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.tls.hostname }}
+      secretName: {{ .Values.ingress.tls.secret }}
+{{- end }}
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+{{- if and (ne .Values.nginxInternal.mtls.tls "") (ne .Values.nginxInternal.mtls.intermediateCrt "") }}
+    nginx.ingress.kubernetes.io/auth-tls-pass-certificate-to-upstream: "true"
+    nginx.ingress.kubernetes.io/auth-tls-secret: {{ .Release.Namespace }}/ca
+    nginx.ingress.kubernetes.io/auth-tls-verify-client: "optional"
+    nginx.ingress.kubernetes.io/auth-tls-verify-depth: "2"
+{{- end }}    
+{{- if .Values.ingress.annotations }}
+{{ toYaml .Values.ingress.annotations | indent 4 }}
+{{- end }}
+{{- if .Values.ingress.labels }}
+  labels:
+{{ toYaml .Values.ingress.labels | indent 4 }}
+{{- end }}
+  name: {{ .Release.Name }}-nginx-rewrite-ingress-http-adapter
+spec:
+  rules:
+    - host: "{{ .Values.ingress.hostname }}"
+      http:
+        paths:
+{{- if and (ne .Values.nginxInternal.mtls.tls "") (ne .Values.nginxInternal.mtls.intermediateCrt "") }}
+          - path: /(http/?.*)
+            backend:
+              serviceName: {{ .Release.Name }}-nginx-internal
+              servicePort: 80
+          - path: /(mqtt)
+            backend:
+              serviceName: {{ .Release.Name }}-nginx-internal
+              servicePort: 80
+{{- else }}
+          - path: /http/?(.*)
+            backend:
+              serviceName: {{ .Release.Name }}-adapter-http
+              servicePort: {{ .Values.adapter_http.httpPort }}
+          - path: /(mqtt)
+            backend:
+              serviceName: {{ .Release.Name }}-adapter-mqtt
+              servicePort: {{ default .Values.mqtt.proxy.wsPort }}
+{{- end }}              
+{{- if .Values.ingress.tls }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.tls.hostname }}
+      secretName: {{ .Values.ingress.tls.secret }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+data:
+  1883: "{{ .Release.Namespace }}/{{ .Release.Name }}-envoy:1883"
+  8883: "{{ .Release.Namespace }}/{{ .Release.Name }}-nginx-internal:8883"
+metadata:
+  name: tcp-services
+  namespace: ingress-nginx
+---
+apiVersion: v1
+kind: ConfigMap
+data:
+  5683: "{{ .Release.Namespace }}/{{ .Release.Name }}-adapter-coap:5683"
+metadata:
+  name: udp-services
+  namespace: ingress-nginx

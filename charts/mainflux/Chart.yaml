@@ -1,23 +1,71 @@
+# Copyright (c) Mainflux
+# SPDX-License-Identifier: Apache-2.0
+
 apiVersion: v2
 name: mainflux
-description: A Helm chart for Kubernetes
-
-# A chart can be either an 'application' or a 'library' chart.
-#
-# Application charts are a collection of templates that can be packaged into versioned archives
-# to be deployed.
-#
-# Library charts provide useful utilities or functions for the chart developer. They're included as
-# a dependency of application charts to inject those utilities and functions into the rendering
-# pipeline. Library charts do not define any templates and therefore cannot be deployed.
+description: Mainflux IoT Platform
+icon: https://avatars1.githubusercontent.com/u/13207490
 type: application
+version: 0.1.7
+appVersion: "0.11.0"
+home: https://www.mainflux.com
+sources:
+  - https://hub.docker.com/u/mainflux/
+maintainers:
+  - name: blokovi
+    email: ivan.milosevic@mainflux.com
+  - name: isavcic
+    email: isavcic@gmail.com
 
-# This is the chart version. This version number should be incremented each time you make changes
-# to the chart and its templates, including the app version.
-# Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 0.1.0
-
-# This is the version number of the application being deployed. This version number should be
-# incremented each time you make changes to the application. Versions are not expected to
-# follow Semantic Versioning. They should reflect the version the application is using.
-appVersion: 1.16.0
+dependencies:
+  - name: nats
+    version: "6.1.2"
+    repository: "@bitnami"
+  - name: postgresql
+    version: "10.2.3"
+    repository: "@bitnami"
+    alias: postgresql-things
+  - name: postgresql
+    version: "10.2.3"
+    repository: "@bitnami"
+    alias: postgresql-users
+  - name: postgresql
+    version: "10.2.3"
+    repository: "@bitnami"
+    alias: postgresql-authn
+  - name: postgresql
+    version: "10.2.3"
+    repository: "@bitnami"
+    alias: postgresql-bootstrap
+    condition: bootstrap.enabled
+  - name: redis
+    version: "12.6.2"
+    repository: "@bitnami"
+    alias: redis-streams
+  - name: redis
+    version: "12.6.2"
+    repository: "@bitnami"
+    alias: redis-auth
+  - name: redis
+    version: "12.6.2"
+    repository: "@bitnami"
+    alias: redis-mqtt
+  - name: redis
+    version: "12.6.2"
+    repository: "@bitnami"
+    alias: redis-opcua
+    condition: adapter_opcua.enabled
+  - name: redis
+    version: "12.6.2"
+    repository: "@bitnami"
+    alias: redis-lora
+    condition: adapter_lora.enabled
+  - name: influxdb
+    version: "1.1.9"
+    repository: "@bitnami"
+    condition: influxdb.enabled
+  - name: mongodb
+    version: "10.4.1"
+    repository: "@bitnami"
+    alias: twins-db
+    condition: twins.enabled

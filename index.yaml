@@ -3,9 +3,9 @@ entries:
   mainflux:
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2021-02-09T01:13:22.334072126Z"
+    created: "2021-02-09T02:21:43.749109446Z"
     description: A Helm chart for Kubernetes
-    digest: ac4b1eaa45a590d3a3b40fd876c474c0aa968acde9223ad39fb20d7de32e7a7b
+    digest: 931f319eff779cd5cc5cc0fcb23febf0402a8ff30c3868c1f09733e5c9e4c03c
     name: mainflux
     type: application
     urls:
@@ -14,13 +14,13 @@ entries:
   nodered:
   - apiVersion: v2
     appVersion: 1.2.9
-    created: "2021-02-09T01:13:22.59600355Z"
+    created: "2021-02-09T02:21:44.009124424Z"
     description: Node-RED Deployment
-    digest: e104dc51a8c87e9355d8af9eb2801f9b929a693a633aafedd460e78d289fab38
+    digest: a2bd3abad87de8ba95ddd66921ec9f15179bf2dcec5124d5b0e8eea57e830b54
     icon: https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png
     name: nodered
     type: application
     urls:
     - https://github.com/Navtrix/Charts/releases/download/nodered-0.1.0/nodered-0.1.0.tgz
     version: 0.1.0
-generated: "2021-02-09T01:13:22.019347151Z"
+generated: "2021-02-09T02:21:43.432105716Z"
