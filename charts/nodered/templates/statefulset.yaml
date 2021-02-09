@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "nodered.fullname" . }}
   labels:
@@ -11,6 +11,7 @@ spec:
   selector:
     matchLabels:
       {{- include "nodered.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "nodered.fullname" . }}
   template:
     metadata:
     {{- with .Values.podAnnotations }}
@@ -27,15 +28,30 @@ spec:
       serviceAccountName: {{ include "nodered.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: configure
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: busybox
+          command:
+            - chown
+            - "1000:1000"
+            - /data
+          volumeMounts:
+            - name: {{ .Values.dataVolume | default "data" }}
+              mountPath: /data
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: "TZ"
+              value: {{ .Values.timezone | default "Australia/Melbourne" }}
           ports:
             - name: http
-              containerPort: 80
+              containerPort: 1880
               protocol: TCP
           livenessProbe:
             httpGet:
@@ -47,6 +63,15 @@ spec:
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: {{ .Values.dataVolume | default "data" }}
+              mountPath: /data
+      {{- with .Values.persistent }}
+      volumes:
+        - persistentVolumeClaim:
+            claimName: {{ .Values.dataVolume | default "data" }}
+      {{- end }}
+
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -59,3 +84,11 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ .Values.dataVolume | default "data" }}
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: {{ .Values.dataSize | default "2Gi" }}
